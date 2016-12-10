@@ -40,9 +40,10 @@ inline bool learnmode(void)
 void blinkLED(void)
 {
   static int state = HIGH, count = 0;
-  if (!learnmode() && count++ % 4 != 0) // make it blink a little less often
-    return;
+  if (!learnmode() && count++ < 5)
+    return; // blink slower if not in learnmode
 
+  count = 0;
   state ^= 1; // toggle
   digitalWrite(ledPin, state);
 }

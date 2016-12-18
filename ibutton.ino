@@ -74,6 +74,7 @@ uint32_t hash_addr(byte (&addr)[8])
 void learn_ibutton(byte (&addr)[8])
 {
   size_t i, base;
+  bool found = false;
   uint32_t hash = hash_addr(addr);
 
   for (i = 0; i < EEPROM_SIZE/4; i++) {
@@ -81,11 +82,14 @@ void learn_ibutton(byte (&addr)[8])
     if (EEPROM.read(base  ) == 0xFF &&
         EEPROM.read(base+1) == 0xFF &&
         EEPROM.read(base+2) == 0xFF &&
-        EEPROM.read(base+3) == 0xFF)
-      break;
+        EEPROM.read(base+3) == 0xFF) {
+
+        found = true;
+        break;
+    }
   }
 
-  if (i == EEPROM_SIZE/4) {
+  if (!found) {
     debug("Error: Out of EEPROM space!\r\n");
     return;
   }

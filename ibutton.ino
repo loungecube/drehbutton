@@ -9,7 +9,11 @@
 const int
   ledPin       = 13,
   learnmodePin = 14,
-  ibuttonPin   = 16;
+  ibuttonPin   = 16,
+  loginPin     = 17,//Pin 17 on TeensyLC has the only 5v Output connected
+  statusPin    = 22,
+  errorPin     = 23;
+
 
 OneWire ds(ibuttonPin);  // iButton reader on pin 16
 
@@ -21,20 +25,43 @@ void setup(void)
 
   pinMode(ledPin, OUTPUT);
   pinMode(learnmodePin, INPUT_PULLUP); // connect to GND via a button
-
+  pinMode(loginPin, OUTPUT);
+  pinMode(statusPin, INPUT);//external pull-down provided
+  pinMode(errorPin, INPUT);//    "        "          "
+  
   Timer1.initialize(~0); // still too often
   //XXX feels like quite a lot of overkill to use a timer just to blink a LED but oh well, I'm not using them anyway
   Timer1.attachInterrupt(blinkLED);
-
+  
   delay(4200); // hopefully Serial is set up by then
   debug("Hello!\r\n");
   dump_eeprom();
+  
+  check_contactor();
+  
+  if(logged_in())
+    debug("unexpected MC reset!\r\n");
 }
 
 // check whether the learnmode button is being pushed
 inline bool learnmode(void)
 {
   return digitalRead(learnmodePin) == LOW;
+}
+
+inline bool logged_in(void)
+{
+  return digitalRead(statusPin) == HIGH;
+}
+
+void check_contactor(void)
+{
+  if(digitalRead(errorPin) == HIGH){
+    debug("Contactor error!\r\n");
+    while(true){
+      delay(10000);//halts most of the system on contactor error
+    }
+  }
 }
 
 void blinkLED(void)
@@ -151,41 +178,55 @@ void loop(void)
   ///static unsigned int count = 0;
   static bool got_button = false; // only handle the button once per contact
   // XXX should also probably cache the hash because the contact isn't always very stable
+  
+  while(!logged_in()){
 
-  ds.reset_search();
-  if (!ds.search(addr)) {
+    ds.reset_search();
+    if (!ds.search(addr)) {
       ds.reset_search();
       got_button = false;
-      return;
-  } else if (got_button) {
-    return;
+      continue;
+    } else if (got_button) {
+      continue;
+    }
+  
+    got_button = true;
+
+    if (OneWire::crc8(addr, 7) != addr[7]) {
+      debug("CRC is not valid!\r\n");
+      continue;
+    }
+
+    int ibutton = find_ibutton(addr);
+      if (learnmode()) {
+        if (ibutton != -1) {
+          char str[32];
+          format_addr(str, addr);
+          debugf("I already know about iButton %s (index: %d)!\r\n", str, ibutton);
+        } else {
+          learn_ibutton(addr);
+      }
+      continue;
+    }
+
+    // not in learnmode, authenticate.
+    if (ibutton == -1) {
+      debug("I'm sorry Dave, I'm afraid I can't do that.\r\n");
+      // TODO: display failure message on display
+      continue;
+    } else {
+      debug("Missile system engaged. Target locked.\r\n");
+      digitalWrite(loginPin, HIGH);
+      delay(300);//give the relays some time
+      digitalWrite(loginPin, LOW);
+      delay(300);
+    }
   }
   
-  got_button = true;
-
-  if (OneWire::crc8(addr, 7) != addr[7]) {
-      debug("CRC is not valid!\r\n");
-      return;
-  }
-
-  int ibutton = find_ibutton(addr);
-  if (learnmode()) {
-    if (ibutton != -1) {
-      char str[32];
-      format_addr(str, addr);
-      debugf("I already know about iButton %s (index: %d)!\r\n", str, ibutton);
-    } else {
-      learn_ibutton(addr);
-    }
-    return;
-  }
-
-  // not in learnmode, authenticate.
-  if (ibutton == -1) {
-    debug("I'm sorry Dave, I'm afraid I can't do that.\r\n");
-    // TODO: display failure message on display
-  } else {
-    debug("Missile system engaged. Target locked.\r\n");
-    // TODO: write to the correct pin that has the relay connected
-  }
+  do {
+    delay(100);
+  } while (logged_in());
+  delay(1000);//give the contactor some time
+  check_contactor();
+  
 }

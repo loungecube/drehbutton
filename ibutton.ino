@@ -29,10 +29,6 @@ void setup(void)
   pinMode(statusPin, INPUT);//external pull-down provided
   pinMode(errorPin, INPUT);//    "        "          "
   
-  Timer1.initialize(~0); // still too often
-  //XXX feels like quite a lot of overkill to use a timer just to blink a LED but oh well, I'm not using them anyway
-  Timer1.attachInterrupt(blinkLED);
-  
   delay(4200); // hopefully Serial is set up by then
   debug("Hello!\r\n");
   dump_eeprom();
@@ -41,6 +37,10 @@ void setup(void)
   
   if(logged_in())
     debug("unexpected MC reset!\r\n");
+    
+  Timer1.initialize(~0); // still too often
+  //XXX feels like quite a lot of overkill to use a timer just to blink a LED but oh well, I'm not using them anyway
+  Timer1.attachInterrupt(blinkLED);  
 }
 
 // check whether the learnmode button is being pushed

@@ -4,15 +4,15 @@
 
 #define debug Serial.print
 #define debugf Serial.printf
-#define EEPROM_SIZE 128 // bytes
+#define EEPROM_SIZE 128000 // bytes, the stm32f103 has 128 kb flash
 
 const int
-  ledPin       = 13,
-  learnmodePin = 14,
-  ibuttonPin   = 16,
-  loginPin     = 17,//Pin 17 on TeensyLC has the only 5v Output connected
-  statusPin    = 22,
-  errorPin     = 23;
+  ledPin       = PA1,
+  learnmodePin = PA2,
+  ibuttonPin   = PA3,
+  loginPin     = PA4,
+  statusPin    = PA5,
+  errorPin     = PA6;
 
 
 OneWire ds(ibuttonPin);  // iButton reader on pin 16
@@ -109,7 +109,7 @@ void learn_ibutton(byte (&addr)[8])
     if (EEPROM.read(base  ) == 0xFF &&
         EEPROM.read(base+1) == 0xFF &&
         EEPROM.read(base+2) == 0xFF &&
-        EEPROM.read(base+3) == 0xFF) {
+        EEPROM.read(base+3) == 0xFF &&) {
 
         found = true;
         break;
